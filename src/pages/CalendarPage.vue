@@ -6,7 +6,13 @@
       <q-card class="q-mb-md">
         <q-card-section>
           <!-- Component Calendar Event -->
-          <CCEvents :events="events" @parentMethods="showLoading"></CCEvents>
+          <CCEvents
+            :events="events"
+            @showLoading="showLoading"
+            @deleteEvents="deleteEvents"
+          ></CCEvents>
+          <!-- :parentDeleteMethod=""
+          :parentDeleteMethod="" -->
         </q-card-section>
       </q-card>
 
@@ -38,7 +44,7 @@
         <q-separator />
 
         <q-card-section style="max-height: 50vh" class="scroll">
-          <q-form @submit.prevent="saveNewEvent" class="q-gutter-md">
+          <q-form @submit.prevent class="q-gutter-md">
             <!-- Title -->
             <q-input v-model="nEventform.title" label="Title" outlined required />
 
@@ -56,7 +62,7 @@
               <!-- Date Picker -->
               <q-input
                 filled
-                v-model="nEventform.date"
+                v-model="nEventform.startDate"
                 mask="date"
                 :rules="['date']"
                 label="Select Start Date"
@@ -64,7 +70,7 @@
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="nEventform.start">
+                      <q-date v-model="nEventform.startDate">
                         <div class="row items-center justify-end">
                           <q-btn v-close-popup label="Close" color="primary" flat />
                         </div>
@@ -95,7 +101,7 @@
               <!-- Date Picker -->
               <q-input
                 filled
-                v-model="nEventform.date"
+                v-model="nEventform.endDate"
                 mask="date"
                 :rules="['date']"
                 label="Select End Date"
@@ -103,7 +109,7 @@
                 <template v-slot:append>
                   <q-icon name="event" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="nEventform.end">
+                      <q-date v-model="nEventform.endDate">
                         <div class="row items-center justify-end">
                           <q-btn v-close-popup label="Close" color="primary" flat />
                         </div>
@@ -135,7 +141,14 @@
 
         <q-card-actions align="right">
           <q-btn flat label="Close" color="primary" v-close-popup />
-          <q-btn flat label="Save" type="submit" color="primary" />
+          <q-btn
+            flat
+            label="Save"
+            v-if="saveAllowed ? true : false"
+            type="submit"
+            color="primary"
+            @click="saveNewEvent"
+          />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -187,18 +200,47 @@ export default {
           // Fetching...
           this.fetchEvents()
         },
+        timeZone: 'Asia/Manila', // Use the browser's local timezone
       },
       dateRange: { start: null, end: null },
       showUCEvent: false,
       nEventform: {
         title: '',
         description: '',
+        startDate: '',
+        startTime: '00:00',
+        endDate: '',
+        endTime: '00:00',
+        location: '',
+        color: '',
         start: '',
-        startTime: '',
         end: '',
-        endTime: '',
       },
+      saveAllowed: false,
     }
+  },
+  watch: {
+    nEventform: {
+      handler() {
+        if (this.nEventform.startDate && this.nEventform.endDate) {
+          const startDateTime = new Date(
+            `${this.nEventform.startDate} ${this.nEventform.startTime}`,
+          )
+          const endDateTime = new Date(`${this.nEventform.endDate} ${this.nEventform.endTime}`)
+          if (startDateTime > endDateTime) {
+            this.saveAllowed = false
+          } else {
+            this.saveAllowed = true
+          }
+        }
+        // this.loading = true
+        // setTimeout(() => {
+        //   this.rows = this.events
+        //   this.loading = false
+        // }, 500)
+      },
+      deep: true,
+    },
   },
   methods: {
     showLoading(eventtype = true) {
@@ -214,6 +256,10 @@ export default {
       } else {
         this.$q.loading.hide()
       }
+    },
+
+    deleteEvents(evetnItem) {
+      this.events = this.events.filter((e) => e.id !== evetnItem)
     },
 
     async getEventType() {
@@ -236,6 +282,9 @@ export default {
     addNewEvent(eventformvalue = {}) {
       if (eventformvalue.id >= 1) {
         this.events.push(eventformvalue)
+        if (this.events.length === 1) {
+          this.getEventType()
+        }
       }
     },
 
@@ -256,25 +305,6 @@ export default {
       }, 3000)
     },
 
-    handleEventDrop(info) {
-      try {
-        console.log(
-          'Event dropped:',
-          info.event.title,
-          'Date:',
-          `${info.event.startStr} - ${this.endDateStr(info.event.endStr)}`,
-        )
-        // Uncomment when your API is ready
-        // await this.$api.patch(`api/events/calendar/${info.event.id}/`, {
-        //   start: info.event.startStr,
-        //   end: info.event.endStr || null
-        // })
-      } catch (error) {
-        console.error('Error updating event:', error)
-        info.revert()
-      }
-    },
-
     endDateStr(info) {
       const adjustedEnd = info ? new Date(info) : null
       if (adjustedEnd) {
@@ -283,37 +313,82 @@ export default {
       return adjustedEnd ? adjustedEnd.toISOString() : null
     },
 
-    handleEventResize(info) {
-      console.log('Event resized:', info.event.title, info.event.start, info.event.end)
+    handleEventDrop(info) {
+      try {
+        // console.log(
+        //   'Event dropped:',
+        //   info.event.title,
+        //   'Date:',
+        //   `${info.event.startStr} - ${this.endDateStr(info.event.endStr)}`,
+        // )
+        this.updateEvent(info)
+      } catch (error) {
+        console.error('Error updating event:', error)
+        info.revert()
+      }
+    },
 
-      this.saveNewEvent({
-        title: info.event.title,
-        start: this.$formatDateTime(info.event.start),
-        end: this.$formatDateTime(this.endDateStr(info.event.end)) || null,
-        color: info.event.backgroundColor,
-      })
+    handleEventResize(info) {
+      // console.log('Event resized:', info.event.title, info.event.start, info.event.end)
+      this.nEventform.location = info.event.title
+      this.nEventform.startDate = this.$formatDate(info.event.start)
+      this.nEventform.endDate = this.$formatDateTime(this.endDateStr(info.event.end)) || null
+      this.nEventform.color = info.event.backgroundColor
+      this.updateEvent(info.event.id)
     },
 
     handleEventReceive(info) {
       this.showUCEvent = true
-      console.log('Event received:', info.event.title, 'Date:', info.event.startStr)
-      // You can save the event to your backend here
-      this.saveNewEvent({
-        title: info.event.title,
-        start: this.$formatDateTime(info.event.start),
-        end: this.$formatDateTime(this.endDateStr(info.event.end)) || null,
-        color: info.event.backgroundColor,
-      })
+      // console.log('Event received:', info.event.title, 'Date:', info.event.startStr)
+      this.nEventform.location = info.event.title
+      this.nEventform.startDate = this.$formatDate(info.event.start)
+      this.nEventform.endDate = this.$formatDateTime(this.endDateStr(info.event.end)) || null
+      this.nEventform.color = info.event.backgroundColor
     },
 
-    async saveNewEvent(event) {
+    async saveNewEvent() {
       try {
-        console.log('Saving event:', event)
-        // Uncomment when your API is ready
-        // const response = await this.$api.post('api/events/calendar/', event)
-        // console.log('Event saved:', response.data)
+        const forms = {
+          title: this.nEventform.title,
+          description: this.nEventform.description,
+          location: this.nEventform.location,
+          color: this.nEventform.color,
+          start: this.$formatDateTime(`${this.nEventform.startDate} ${this.nEventform.startTime}`),
+          end: this.$formatDateTime(`${this.nEventform.endDate} ${this.nEventform.endTime}`),
+        }
+        console.log('Saving event:', forms)
+        const response = await this.$api.post('api/events/calendar/', forms)
+        console.log('Event saved:', response.data)
       } catch (error) {
         console.error('Error saving event:', error)
+      }
+    },
+
+    async updateEvent(info) {
+      try {
+        const forms = {
+          title: info.event.title,
+          start: this.$formatDateTime(info.event.start),
+          end: this.$formatDateTime(info.event.end),
+        }
+        console.log('Update event:', forms)
+        const response = await this.$api.put(`api/events/calendar/${info.event.id}/`, forms)
+        console.log('Event saved:', response.data)
+      } catch (error) {
+        console.error('Error updating event:', error)
+      }
+    },
+
+    async deleteEvent(id) {
+      try {
+        console.log('Delete event:', this.nEventform)
+        const response = await this.$api.delete(
+          `api/events/calendar/${id}/delete/`,
+          this.nEventform,
+        )
+        console.log('Event saved:', response.data)
+      } catch (error) {
+        console.error('Error deleting event:', error)
       }
     },
 

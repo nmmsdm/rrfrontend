@@ -47,6 +47,7 @@ export default {
       type: Object,
       required: true,
     },
+    // parentDeleteMethod: Function,
   },
   data() {
     return {
@@ -92,7 +93,7 @@ export default {
           persistent: true,
         })
         .onOk(async () => {
-          this.$emit('parentMethods')
+          this.$emit('showLoading')
           try {
             if (event.title !== this.eventForm.title) {
               await this.$api.put(
@@ -108,7 +109,7 @@ export default {
             console.error('Error saving event:', error.message)
             this.$q.notify({ type: 'negative', message: 'Failed to update event' })
           }
-          this.$emit('parentMethods', false)
+          this.$emit('showLoading', false)
         })
     },
 
@@ -131,17 +132,17 @@ export default {
         })
     },
     async deleteItem(id) {
-      this.$emit('parentMethods')
+      this.$emit('showLoading')
       try {
         await this.$api.delete(`${this.calendarApi}/calendar/event/${id}/delete/`)
-        this.rows = this.rows.filter((e) => e.id !== id)
+        this.$emit('deleteEvents', id)
         this.showDialog = false
         this.$q.notify({ type: 'positive', message: 'Event deleted successfully' })
       } catch (error) {
         console.error('Error deleting event:', error.message)
         this.$q.notify({ type: 'negative', message: 'Failed to delete event' })
       }
-      this.$emit('parentMethods', false)
+      this.$emit('showLoading', false)
     },
 
     handleDoubleClick(eventID) {

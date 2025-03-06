@@ -2,7 +2,7 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
+        <!-- <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" /> -->
 
         <q-toolbar-title> Meeting Room Reservation </q-toolbar-title>
 
@@ -10,23 +10,30 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
+    <!-- <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-list>
         <q-item-label header> Navigator </q-item-label>
 
         <EssentialLink v-for="link in linksList" :key="link.title" v-bind="link" />
       </q-list>
-    </q-drawer>
+    </q-drawer> -->
 
     <q-page-container>
       <router-view />
     </q-page-container>
+
+    <q-page-sticky id="divSwitch" position="bottom-left" :offset="[18, 18]">
+      <q-fab icon="touch_app" vertical-actions-align="left" direction="up" color="light-green-9 ">
+        <q-fab-action external-label color="accent" label="Open Chat" icon="chat" />
+        <q-fab-action external-label color="accent" label="Export" icon="grid_on" />
+      </q-fab>
+    </q-page-sticky>
   </q-layout>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import EssentialLink from 'components/EssentialLink.vue'
+// import { ref } from 'vue'
+// import EssentialLink from 'components/EssentialLink.vue'
 import { useAuthStore } from 'src/stores/auth'
 import { useRouter } from 'vue-router'
 import { LocalStorage, useQuasar, QSpinnerHourglass } from 'quasar'
@@ -35,16 +42,16 @@ const authDestroy = useAuthStore()
 const router = useRouter()
 const loader = useQuasar()
 
-const linksList = [
-  {
-    title: 'Dashboard',
-    caption: 'Calendar Event',
-    icon: 'dashboard',
-    link: '/dashboard',
-  },
-]
+// const linksList = [
+//   {
+//     title: 'Dashboard',
+//     caption: 'Calendar Event',
+//     icon: 'dashboard',
+//     link: '/dashboard',
+//   },
+// ]
 
-const leftDrawerOpen = ref(false)
+// const leftDrawerOpen = ref(false)
 
 const Logout = async () => {
   showLoading()
@@ -71,7 +78,7 @@ const showLoading = (eventtype = true) => {
   }
 }
 
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value
-}
+// function toggleLeftDrawer() {
+//   leftDrawerOpen.value = !leftDrawerOpen.value
+// }
 </script>

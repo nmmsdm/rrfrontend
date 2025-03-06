@@ -15,7 +15,12 @@
         @click="selectedColor = color"
       />
     </div>
-    <q-input v-model="newEventTitle" label="Event Title" class="q-mt-sm" />
+    <q-input
+      v-model="newEventTitle"
+      :disable="selectedColor ? false : true"
+      label="Room Event Title"
+      class="q-mt-sm"
+    />
     <q-btn label="Add" color="primary" class="q-mt-sm" @click="addEvent" />
     <q-inner-loading
       :showing="loading"
@@ -56,6 +61,11 @@ export default {
         'indigo',
         'crimson',
         'magenta',
+        'maroon',
+        'navy',
+        'black',
+        'gold',
+        'silver',
       ],
     }
   },
