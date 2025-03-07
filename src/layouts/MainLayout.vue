@@ -21,13 +21,6 @@
     <q-page-container>
       <router-view />
     </q-page-container>
-
-    <q-page-sticky id="divSwitch" position="bottom-left" :offset="[18, 18]">
-      <q-fab icon="touch_app" vertical-actions-align="left" direction="up" color="light-green-9 ">
-        <q-fab-action external-label color="accent" label="Open Chat" icon="chat" />
-        <q-fab-action external-label color="accent" label="Export" icon="grid_on" />
-      </q-fab>
-    </q-page-sticky>
   </q-layout>
 </template>
 

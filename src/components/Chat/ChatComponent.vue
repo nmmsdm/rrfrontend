@@ -1,140 +1,162 @@
-// src/components/Chat.vue
 <template>
-  <q-layout view="hHh lpR fFf">
-    <q-header elevated class="bg-primary text-white">
-      <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="leftDrawerOpen = !leftDrawerOpen"
-        />
-        <q-toolbar-title> Chat App </q-toolbar-title>
-        <q-btn flat round dense icon="person" @click="rightDrawerOpen = !rightDrawerOpen" />
-      </q-toolbar>
-    </q-header>
+  <div style="height: 100%; max-height: 100%">
+    <q-card class="chat-dialog-card">
+      <q-card-section class="q-pa-none">
+        <div class="row no-wrap items-center q-pa-sm bg-primary text-white">
+          <div class="col text-h6">Chat App</div>
+        </div>
+      </q-card-section>
 
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered content-class="bg-grey-1">
-      <q-list>
-        <q-item-label header class="text-grey-8">
-          Chats
-          <q-btn
-            flat
-            round
-            dense
-            icon="add"
-            class="float-right"
-            @click="showNewChatDialog = true"
-          />
-        </q-item-label>
-        <q-separator />
-
-        <q-item
-          v-for="room in chatRooms"
-          :key="room.id"
-          clickable
-          v-ripple
-          :active="currentRoom && currentRoom.id === room.id"
-          @click="selectRoom(room)"
-        >
-          <q-item-section avatar>
-            <q-avatar>
-              <q-icon v-if="room.is_group" name="group" color="primary" size="sm" />
-              <q-icon v-else name="person" color="teal" size="sm" />
-            </q-avatar>
-          </q-item-section>
-
-          <q-item-section>
-            <q-item-label>{{ room.name }}</q-item-label>
-            <q-item-label caption lines="1">
-              {{
-                room.last_message
-                  ? `${room.last_message.sender.username}: ${room.last_message.content}`
-                  : 'No messages yet'
-              }}
+      <q-card-section class="q-pa-none row">
+        <!-- Left Drawer (Chat List) -->
+        <div class="col-4 bg-black" style="max-height: 85vh; overflow-y: auto">
+          <q-list>
+            <q-item-label header class="text-white">
+              Chats
+              <q-btn
+                flat
+                round
+                dense
+                icon="add"
+                class="float-right"
+                @click="showNewChatDialog = true"
+              />
             </q-item-label>
-          </q-item-section>
+            <q-separator />
 
-          <q-item-section side v-if="room.unread_count > 0">
-            <q-badge color="red" text-color="white">{{ room.unread_count }}</q-badge>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-drawer>
+            <q-item
+              v-for="room in chatRooms"
+              :key="room.id"
+              clickable
+              v-ripple
+              :active="currentRoom && currentRoom.id === room.id"
+              @click="selectRoom(room)"
+            >
+              <q-item-section avatar>
+                <q-avatar>
+                  <q-icon v-if="room.is_group" name="group" color="primary" size="sm" />
+                  <q-icon v-else name="person" color="teal" size="sm" />
+                </q-avatar>
+              </q-item-section>
 
-    <q-drawer v-model="rightDrawerOpen" side="right" bordered content-class="bg-grey-1">
-      <q-list v-if="currentRoom">
-        <q-item-label header class="text-grey-8">
-          {{ currentRoom.is_group ? 'Group Members' : 'Chat Info' }}
-        </q-item-label>
-        <q-separator />
+              <q-item-section>
+                <q-item-label class="text-white">{{ room.name }}</q-item-label>
+                <q-item-label caption lines="1" class="text-white">
+                  {{
+                    room.last_message
+                      ? `Last Message: ${room.last_message.content} @ ${room.last_message.sender.username}`
+                      : 'No messages yet'
+                  }}
+                </q-item-label>
+              </q-item-section>
 
-        <q-item v-for="user in currentRoom.participants" :key="user.id">
-          <q-item-section avatar>
-            <q-avatar>
-              <q-icon name="person" color="teal" size="sm" />
-            </q-avatar>
-          </q-item-section>
-
-          <q-item-section>
-            <q-item-label>{{ user.username }}</q-item-label>
-            <q-item-label caption>{{ user.email }}</q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
-    </q-drawer>
-
-    <q-page-container>
-      <div class="chat-container">
-        <div v-if="!currentRoom" class="no-room-selected">
-          <q-icon name="chat" size="6rem" color="grey-5" />
-          <div class="text-h6 text-grey-7 q-mt-md">Select a chat or create a new one</div>
+              <q-item-section side v-if="room.unread_count > 0">
+                <q-badge color="red" text-color="white">{{ room.unread_count }}</q-badge>
+              </q-item-section>
+            </q-item>
+          </q-list>
         </div>
 
-        <template v-else>
-          <div class="chat-header">
-            <h4 class="q-ma-none">{{ currentRoom.name }}</h4>
-          </div>
-
-          <div class="chat-messages" ref="messagesContainer">
-            <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper">
-              <div :class="['message', message.sender.id === currentUser.id ? 'sent' : 'received']">
-                <div class="message-sender" v-if="shouldShowSender(message, index)">
-                  {{ message.sender.username }}
-                </div>
-                <div class="message-content">{{ message.content }}</div>
-                <div class="message-time">
-                  {{ formatTime(message.timestamp) }}
-                  <q-icon
-                    name="done_all"
-                    size="xs"
-                    :color="isMessageReadByAll(message) ? 'blue' : 'grey'"
-                    v-if="message.sender.id === currentUser.id"
-                  />
-                </div>
-              </div>
+        <!-- Right Side (Chat Area) -->
+        <div class="col-8 bg-white" style="height: 85vh; display: flex; flex-direction: column">
+          <div v-if="!currentRoom" class="no-room-selected flex flex-center" style="flex-grow: 1">
+            <div class="column items-center">
+              <q-icon name="chat" size="4rem" color="grey-5" />
+              <div class="text-h6 text-grey-7 q-mt-md">Select a chat or create a new one</div>
             </div>
           </div>
 
-          <div class="chat-input">
-            <q-input
-              v-model="newMessage"
-              placeholder="Type a message"
-              outlined
-              dense
-              bg-color="white"
-              @keyup.enter="sendMessage"
+          <template v-else>
+            <!-- Chat Header -->
+            <div class="chat-header q-px-md q-py-sm bg-black">
+              <div class="row items-center no-wrap">
+                <div class="col">
+                  <h6 class="q-ma-none">{{ currentRoom.name }}</h6>
+                </div>
+                <div class="col-auto">
+                  <q-btn flat round dense icon="info" @click="rightDrawerOpen = !rightDrawerOpen" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div
+              class="chat-messages q-pa-sm"
+              ref="messagesContainer"
+              style="flex-grow: 1; overflow-y: auto"
             >
-              <template v-slot:after>
-                <q-btn round dense flat icon="send" color="primary" @click="sendMessage" />
-              </template>
-            </q-input>
-          </div>
-        </template>
-      </div>
-    </q-page-container>
+              <div v-for="(message, index) in messages" :key="message.id" class="message-wrapper">
+                <div
+                  :class="['message', message.sender.id === authUser.user.id ? 'sent' : 'received']"
+                >
+                  <div class="message-sender" v-if="shouldShowSender(message, index)">
+                    {{ message.sender.username }}
+                  </div>
+                  <div class="message-content">{{ message.content }}</div>
+                  <div class="message-time">
+                    {{ formatTime(message.timestamp) }}
+                    <q-icon
+                      name="done_all"
+                      size="xs"
+                      :color="isMessageReadByAll(message) ? 'blue' : 'grey'"
+                      v-if="message.sender.id === authUser.user.id"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input q-pa-sm" style="border-top: 1px solid #e0e0e0">
+              <q-input
+                v-model="newMessage"
+                placeholder="Type a message"
+                outlined
+                dense
+                bg-color="white"
+                @keyup.enter="sendMessage"
+              >
+                <template v-slot:after>
+                  <q-btn round dense flat icon="send" color="primary" @click="sendMessage" />
+                </template>
+              </q-input>
+            </div>
+          </template>
+        </div>
+
+        <!-- Right Drawer (Chat Info) - Conditionally shown -->
+        <div
+          v-if="rightDrawerOpen"
+          class="col-4 bg-black"
+          style="max-height: 70vh; overflow-y: auto; position: absolute; right: 0; z-index: 10"
+        >
+          <q-list v-if="currentRoom">
+            <div class="row items-center q-pa-sm">
+              <div class="col text-subtitle1 text-weight-medium">
+                {{ currentRoom.is_group ? 'Group Members' : 'Chat Info' }}
+              </div>
+              <div class="col-auto">
+                <q-btn flat round dense icon="close" @click="rightDrawerOpen = false" />
+              </div>
+            </div>
+            <q-separator />
+
+            <q-item v-for="user in currentRoom.participants" :key="user.id">
+              <q-item-section avatar>
+                <q-avatar>
+                  <q-icon name="person" color="teal" size="sm" />
+                </q-avatar>
+              </q-item-section>
+
+              <q-item-section>
+                <q-item-label>{{ user.username }}</q-item-label>
+                <q-item-label caption>{{ user.email }}</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </div>
+      </q-card-section>
+    </q-card>
 
     <!-- Dialog for creating a new chat -->
     <q-dialog v-model="showNewChatDialog">
@@ -162,7 +184,7 @@
             <q-tab-panel name="direct">
               <q-select
                 v-model="selectedUser"
-                :options="users.filter((u) => u.id !== currentUser.id)"
+                :options="users.filter((u) => u.id !== authUser.user.id)"
                 option-label="username"
                 label="Select User"
                 outlined
@@ -174,7 +196,7 @@
               <q-input v-model="groupName" label="Group Name" outlined dense class="q-mb-md" />
               <q-select
                 v-model="selectedUsers"
-                :options="users.filter((u) => u.id !== currentUser.id)"
+                :options="users.filter((u) => u.id !== authUser.user.id)"
                 option-label="username"
                 multiple
                 label="Select Users"
@@ -191,11 +213,12 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-  </q-layout>
+  </div>
 </template>
 
 <script>
 import { format } from 'date-fns'
+import { useAuthStore } from 'src/stores/auth'
 
 export default {
   name: 'ChatComponent',
@@ -218,7 +241,10 @@ export default {
       groupName: '',
     }
   },
-
+  setup() {
+    const authUser = useAuthStore()
+    return { authUser }
+  },
   created() {
     this.getCurrentUser()
     this.fetchUsers()
@@ -303,7 +329,7 @@ export default {
         this.socket.close()
       }
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//${import.meta.env.VITE_CHAT_BASE_URL}/ws/chat/${roomId}/`
+      const wsUrl = `${protocol}//${import.meta.env.VITE_CHAT_WS_URL}/ws/chat/${roomId}/`
       console.log(`${wsUrl}`)
       this.socket = new WebSocket(wsUrl)
 
@@ -321,7 +347,7 @@ export default {
           })
 
           // Mark message as read if it's not from the current user
-          if (data.message.sender.id !== this.currentUser.id) {
+          if (data.message.sender.id !== this.authUser.user.id) {
             this.markMessageAsRead(data.message.id)
           }
 
@@ -353,8 +379,8 @@ export default {
 
       this.messages.forEach((message) => {
         if (
-          message.sender.id !== this.currentUser.id &&
-          !message.read_by.some((user) => user.id === this.currentUser.id)
+          message.sender.id !== this.authUser.user.id &&
+          !message.read_by.some((user) => user.id === this.authUser.user.id)
         ) {
           this.markMessageAsRead(message.id)
         }
@@ -383,8 +409,8 @@ export default {
 
         // Update unread count if necessary
         if (
-          message.sender.id !== this.currentUser.id &&
-          !message.read_by.some((user) => user.id === this.currentUser.id)
+          message.sender.id !== this.authUser.user.id &&
+          !message.read_by.some((user) => user.id === this.authUser.user.id)
         ) {
           this.chatRooms[roomIndex].unread_count += 1
         }
@@ -413,10 +439,14 @@ export default {
 
       // For direct chats, check if the other person has read the message
       if (!this.currentRoom.is_group) {
-        const otherUser = this.currentRoom.participants.find(
-          (user) => user.id !== this.currentUser.id,
-        )
-        return message.read_by.some((user) => user.id === otherUser.id)
+        try {
+          const otherUser = this.currentRoom.participants.find(
+            (user) => user.id !== this.authUser.user.id,
+          )
+          return message.read_by.some((user) => user.id === otherUser.id)
+        } catch {
+          console.log('You should not be here!')
+        }
       }
 
       // For group chats, check if all participants have read the message
@@ -551,13 +581,17 @@ export default {
 
 .message.sent {
   align-self: flex-end;
-  background-color: #dcf8c6;
+  background-color: #000000;
   margin-left: auto;
 }
 
+/* For sent messages container */
+.message-wrapper .message.sent {
+  align-self: flex-end; /* Explicitly align to the right end */
+}
 .message.received {
   align-self: flex-start;
-  background-color: white;
+  background-color: rgb(0, 0, 0);
   margin-right: auto;
 }
 
@@ -565,7 +599,7 @@ export default {
   font-size: 0.8rem;
   font-weight: bold;
   margin-bottom: 2px;
-  color: #555;
+  color: #ffffff;
 }
 
 .message-content {
@@ -574,7 +608,7 @@ export default {
 
 .message-time {
   font-size: 0.7rem;
-  color: #999;
+  color: #ffffff;
   text-align: right;
   margin-top: 4px;
   display: flex;

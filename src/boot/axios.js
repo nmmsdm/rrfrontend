@@ -47,9 +47,11 @@ api.interceptors.response.use(
         authStore.checkedAuth = false
       }
     } else {
-      await authStore.logout()
-      localStorage.removeItem('auth')
-      authStore.checkedAuth = false
+      if (!status === 404) {
+        await authStore.logout()
+        localStorage.removeItem('auth')
+        authStore.checkedAuth = false
+      }
     }
 
     return Promise.reject(error)

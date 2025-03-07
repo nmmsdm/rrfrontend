@@ -152,6 +152,59 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Chat Box -->
+    <q-dialog
+      v-model="showChatdialog"
+      persistent
+      :maximized="maximizedToggle = true"
+      transition-show="slide-up"
+      transition-hide="slide-down"
+    >
+      <q-card class="bg-primary text-white">
+        <q-bar>
+          <q-space />
+
+          <q-btn
+            dense
+            flat
+            icon="minimize"
+            @click="maximizedToggle = false"
+            :disable="!maximizedToggle"
+          >
+            <q-tooltip v-if="maximizedToggle" class="bg-white text-primary">Minimize</q-tooltip>
+          </q-btn>
+          <q-btn
+            dense
+            flat
+            icon="crop_square"
+            @click="maximizedToggle = true"
+            :disable="maximizedToggle"
+          >
+            <q-tooltip v-if="!maximizedToggle" class="bg-white text-primary">Maximize</q-tooltip>
+          </q-btn>
+          <q-btn dense flat icon="close" v-close-popup>
+            <q-tooltip class="bg-white text-primary">Close</q-tooltip>
+          </q-btn>
+        </q-bar>
+        <q-card-section class="q-pt-none">
+          <ChatComponent></ChatComponent>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+
+    <q-page-sticky id="divSwitch" position="bottom-left" :offset="[18, 18]">
+      <q-fab icon="touch_app" vertical-actions-align="left" direction="up" color="light-green-9 ">
+        <q-fab-action
+          external-label
+          color="accent"
+          label="Open Chat"
+          icon="chat"
+          @click="showChatdialog = true"
+        />
+        <q-fab-action external-label color="accent" label="Export" icon="grid_on" />
+      </q-fab>
+    </q-page-sticky>
   </q-page>
 </template>
 
@@ -162,15 +215,17 @@ import interactionPlugin, { Draggable } from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
 import CCAddEvent from 'src/components/Calendar/CCAddEvent.vue'
+import ChatComponent from 'src/components/Chat/ChatComponent.vue'
+import CCEvents from 'src/components/Calendar/CCEvents.vue'
 
 import { QSpinnerHourglass } from 'quasar'
-import CCEvents from 'src/components/Calendar/CCEvents.vue'
 
 export default {
   components: {
     FullCalendar,
     CCAddEvent,
     CCEvents,
+    ChatComponent,
   },
   data() {
     return {
@@ -200,10 +255,34 @@ export default {
           // Fetching...
           this.fetchEvents()
         },
-        timeZone: 'Asia/Manila', // Use the browser's local timezone
+        eventContent: (arg) => {
+          return {
+            html:
+              this.$formatDate(arg.event.startStr) !== this.$formatDate(arg.event.endStr)
+                ? `<div style="background: ${arg.event.backgroundColor};
+                       color: white;
+                       padding: 1px;
+                       border-radius: 5px;
+                       font-size: 12px">
+                    ${this.$ManualformatTime(arg.event.startStr)} - ${this.$ManualformatTime(arg.event.endStr)} : ${arg.event.title}
+                  </div>`
+                : `<div style="display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span style="width: 10px; height: 10px; background-color: ${arg.event.backgroundColor || 'blue'}; border-radius: 50%; margin-right: 5px;">&nbsp;&nbsp;&nbsp;</span>
+                    <span style="font-weight: bold;">${this.$ManualformatTime(arg.event.startStr)} - ${this.$ManualformatTime(arg.event.endStr)}</span>
+                    <span style="margin-left: 5px;">: ${arg.event.title}</span>
+                  </div>`,
+          }
+        },
+        eventTimeFormat: {
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
+        },
+        timeZone: 'Asia/Manila',
       },
       dateRange: { start: null, end: null },
       showUCEvent: false,
+      showChatdialog: false,
       nEventform: {
         title: '',
         description: '',
@@ -332,7 +411,7 @@ export default {
       // console.log('Event resized:', info.event.title, info.event.start, info.event.end)
       this.nEventform.location = info.event.title
       this.nEventform.startDate = this.$formatDate(info.event.start)
-      this.nEventform.endDate = this.$formatDateTime(this.endDateStr(info.event.end)) || null
+      this.nEventform.endDate = this.$ManualformatTime(this.endDateStr(info.event.end)) || null
       this.nEventform.color = info.event.backgroundColor
       this.updateEvent(info.event.id)
     },
@@ -342,7 +421,7 @@ export default {
       // console.log('Event received:', info.event.title, 'Date:', info.event.startStr)
       this.nEventform.location = info.event.title
       this.nEventform.startDate = this.$formatDate(info.event.start)
-      this.nEventform.endDate = this.$formatDateTime(this.endDateStr(info.event.end)) || null
+      this.nEventform.endDate = this.$ManualformatDateTime(this.endDateStr(info.event.end)) || null
       this.nEventform.color = info.event.backgroundColor
     },
 
@@ -353,8 +432,8 @@ export default {
           description: this.nEventform.description,
           location: this.nEventform.location,
           color: this.nEventform.color,
-          start: this.$formatDateTime(`${this.nEventform.startDate} ${this.nEventform.startTime}`),
-          end: this.$formatDateTime(`${this.nEventform.endDate} ${this.nEventform.endTime}`),
+          start: `${this.nEventform.startDate} ${this.nEventform.startTime}`,
+          end: `${this.nEventform.endDate} ${this.nEventform.endTime}`,
         }
         console.log('Saving event:', forms)
         const response = await this.$api.post('api/events/calendar/', forms)
@@ -368,14 +447,15 @@ export default {
       try {
         const forms = {
           title: info.event.title,
-          start: this.$formatDateTime(info.event.start),
-          end: this.$formatDateTime(info.event.end),
+          start: this.$ManualformatDateTime(info.event.startStr),
+          end: this.$ManualformatDateTime(info.event.endStr),
         }
         console.log('Update event:', forms)
         const response = await this.$api.put(`api/events/calendar/${info.event.id}/`, forms)
         console.log('Event saved:', response.data)
       } catch (error) {
-        console.error('Error updating event:', error)
+        console.error('Error updating event:', error.message)
+        info.revert()
       }
     },
 
@@ -423,3 +503,19 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.fc-daygrid-event {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.fc-daygrid-event-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  display: inline-block;
+}
+</style>

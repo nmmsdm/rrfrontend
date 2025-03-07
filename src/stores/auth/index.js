@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { api } from 'boot/axios'
+import { urlauth } from 'src/config/urls'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -14,7 +15,7 @@ export const useAuthStore = defineStore('auth', {
     async login(email, password) {
       try {
         this.message = null
-        await api.post('api/auth/login/', { email, password })
+        await api.post(`${urlauth}login/`, { email, password })
         await this.getUser()
         this.checkedAuth = true
         // api.defaults.headers.common['X-CSRFToken'] = this.getCookie('csrftoken')
@@ -26,7 +27,7 @@ export const useAuthStore = defineStore('auth', {
     },
     async logout() {
       try {
-        await api.post('api/auth/logout/')
+        await api.post(`${urlauth}logout/`)
         this.user = null
         this.checkedAuth = false
       } catch (error) {
@@ -37,7 +38,7 @@ export const useAuthStore = defineStore('auth', {
     },
     async getUser() {
       try {
-        const res = await api.get('api/auth/user/profile/')
+        const res = await api.get(`${urlauth}user/profile/`)
         this.user = res.data
         this.checkedAuth = true
       } catch (error) {
@@ -47,7 +48,7 @@ export const useAuthStore = defineStore('auth', {
     },
     async refreshToken() {
       try {
-        const res = await api.post('api/auth/token/refresh/')
+        const res = await api.post(`${urlauth}token/refresh/`)
         return res
       } catch (error) {
         console.error('Session expired, please log in again.', error.message)
