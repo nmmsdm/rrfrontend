@@ -1,4 +1,4 @@
-# RoomReservationCalendar (rrfrontend)
+# Meeting Room Reservation Calendar (rrfrontend)
 
 Room reservation for meeting room calendar based
 
