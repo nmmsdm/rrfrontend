@@ -150,11 +150,6 @@ export default {
       this.eventForm.id = event.id
       this.eventForm.title = event.title
       this.eventForm.color = event.color
-
-      this.$q.notify({
-        message: 'Div was double-clicked!',
-        color: 'positive',
-      })
       this.showDialog = true
     },
   },

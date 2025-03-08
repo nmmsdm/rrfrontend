@@ -232,6 +232,8 @@ export default {
       events: [],
       selectedColor: '',
       externalEventsDraggable: null,
+      lastClick: 0,
+      doubleClickCooldown: false,
       calendarOptions: {
         plugins: [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin],
         initialView: 'dayGridMonth',
@@ -272,6 +274,23 @@ export default {
                     <span style="margin-left: 5px;">: ${arg.event.title}</span>
                   </div>`,
           }
+        },
+        eventClick: (info) => {
+          let now = new Date().getTime()
+
+          if (this.doubleClickCooldown) {
+            return
+          }
+
+          if (now - this.lastClick < 300) {
+            this.handleDoubleClick(info)
+            this.doubleClickCooldown = true
+            setTimeout(() => {
+              this.doubleClickCooldown = false
+            }, 3000)
+          }
+
+          this.lastClick = now
         },
         eventTimeFormat: {
           hour: 'numeric',
@@ -390,6 +409,13 @@ export default {
         adjustedEnd.setDate(adjustedEnd.getDate() - 1) // Subtract 1 day
       }
       return adjustedEnd ? adjustedEnd.toISOString() : null
+    },
+
+    handleDoubleClick(info) {
+      this.$q.notify({
+        message: `Div was double-clicked! ${info}`,
+        color: 'positive',
+      })
     },
 
     handleEventDrop(info) {
