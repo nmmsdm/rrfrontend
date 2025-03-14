@@ -44,6 +44,8 @@ api.interceptors.response.use(
         }
       } catch {
         console.warn(error.message)
+        await authStore.logout()
+        localStorage.removeItem('auth')
         authStore.checkedAuth = false
       }
     } else {

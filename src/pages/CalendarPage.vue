@@ -251,27 +251,28 @@ export default {
         eventResize: this.handleEventResize,
         events: [],
         datesSet: (info) => {
-          this.dateRange.start = this.$formatDate(info.startStr)
-          this.dateRange.end = this.$formatDate(info.endStr)
+          this.dateRange.start = this.$ManualformatDate(info.startStr)
+          this.dateRange.end = this.$ManualformatDate(info.endStr)
 
           // Fetching...
           this.fetchEvents()
         },
-        eventContent: (arg) => {
+        eventContent: (info) => {
           return {
             html:
-              this.$formatDate(arg.event.startStr) !== this.$formatDate(arg.event.endStr)
-                ? `<div style="background: ${arg.event.backgroundColor};
+              this.$ManualformatDate(info.event.startStr) ===
+              this.$ManualformatDate(info.event.endStr)
+                ? `<div style="display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    <span style="width: 10px; height: 10px; background-color: ${info.event.backgroundColor || 'blue'}; border-radius: 50%; minfoin-right: 5px;">&nbsp;&nbsp;&nbsp;</span>
+                    <span style="font-weight: bold;">${this.$ManualformatTime(info.event.startStr)} - ${this.$ManualformatTime(info.event.endStr || info.event.startStr)}</span>
+                    <span style="minfoin-left: 5px;">: ${info.event.extendedProps.location || ''} (${info.event.title})</span>
+                  </div>`
+                : `<div style="background: ${info.event.backgroundColor};
                        color: white;
                        padding: 1px;
                        border-radius: 5px;
                        font-size: 12px">
-                    ${this.$ManualformatTime(arg.event.startStr)} - ${this.$ManualformatTime(arg.event.endStr)} : ${arg.event.title}
-                  </div>`
-                : `<div style="display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                    <span style="width: 10px; height: 10px; background-color: ${arg.event.backgroundColor || 'blue'}; border-radius: 50%; margin-right: 5px;">&nbsp;&nbsp;&nbsp;</span>
-                    <span style="font-weight: bold;">${this.$ManualformatTime(arg.event.startStr)} - ${this.$ManualformatTime(arg.event.endStr)}</span>
-                    <span style="margin-left: 5px;">: ${arg.event.title}</span>
+                    ${this.$ManualformatTime(info.event.startStr)} - ${this.$ManualformatTime(info.event.endStr || info.event.startStr)} : ${info.event.extendedProps.location || ''} (${info.event.title})
                   </div>`,
           }
         },
@@ -295,7 +296,7 @@ export default {
         eventTimeFormat: {
           hour: 'numeric',
           minute: '2-digit',
-          hour12: true,
+          hour12: false,
         },
         timeZone: 'Asia/Manila',
       },
@@ -412,10 +413,11 @@ export default {
     },
 
     handleDoubleClick(info) {
-      this.$q.notify({
-        message: `Div was double-clicked! ${info}`,
-        color: 'positive',
-      })
+      console.log(info.event.extendedProps)
+      // this.$q.notify({
+      //   message: `Div was double-clicked! ${info}`,
+      //   color: 'positive',
+      // })
     },
 
     handleEventDrop(info) {
@@ -436,8 +438,8 @@ export default {
     handleEventResize(info) {
       // console.log('Event resized:', info.event.title, info.event.start, info.event.end)
       this.nEventform.location = info.event.title
-      this.nEventform.startDate = this.$formatDate(info.event.start)
-      this.nEventform.endDate = this.$ManualformatTime(this.endDateStr(info.event.end)) || null
+      this.nEventform.startDate = this.$ManualformatDate(info.event.start)
+      this.nEventform.endDate = this.$ManualformatDate(this.endDateStr(info.event.end)) || null
       this.nEventform.color = info.event.backgroundColor
       this.updateEvent(info.event.id)
     },
@@ -446,8 +448,8 @@ export default {
       this.showUCEvent = true
       // console.log('Event received:', info.event.title, 'Date:', info.event.startStr)
       this.nEventform.location = info.event.title
-      this.nEventform.startDate = this.$formatDate(info.event.start)
-      this.nEventform.endDate = this.$ManualformatDateTime(this.endDateStr(info.event.end)) || null
+      this.nEventform.startDate = this.$ManualformatDate(info.event.start)
+      // this.nEventform.endDate = this.$ManualformatDate(this.endDateStr(info.event.end)) || null
       this.nEventform.color = info.event.backgroundColor
     },
 
@@ -458,30 +460,44 @@ export default {
           description: this.nEventform.description,
           location: this.nEventform.location,
           color: this.nEventform.color,
-          start: `${this.nEventform.startDate} ${this.nEventform.startTime}`,
-          end: `${this.nEventform.endDate} ${this.nEventform.endTime}`,
+          start: `${this.$ManualformatDate(this.nEventform.startDate)} ${this.nEventform.startTime}`,
+          end: `${this.$ManualformatDate(this.nEventform.endDate)} ${this.nEventform.endTime}`,
         }
+
         console.log('Saving event:', forms)
-        const response = await this.$api.post('api/events/calendar/', forms)
-        console.log('Event saved:', response.data)
+        if (this.handleEventCreationUpdate(forms, this.nEventform.location, 0)) {
+          const response = await this.$api.post('api/events/calendar/', forms)
+          console.log('Event saved:', response.data)
+          this.showUCEvent = false
+        }
       } catch (error) {
         console.error('Error saving event:', error)
       }
     },
 
     async updateEvent(info) {
+      console.log(info.event.startStr, info.event.endStr)
       try {
         const forms = {
           title: info.event.title,
-          start: this.$ManualformatDateTime(info.event.startStr),
-          end: this.$ManualformatDateTime(info.event.endStr),
+          start: info.event.startStr,
+          end: info.event.endStr,
         }
         console.log('Update event:', forms)
-        const response = await this.$api.put(`api/events/calendar/${info.event.id}/`, forms)
-        console.log('Event saved:', response.data)
+
+        if (
+          this.handleEventCreationUpdate(forms, info.event.extendedProps.location, info.event.id)
+        ) {
+          const response = await this.$api.put(`api/events/calendar/${info.event.id}/`, forms)
+          console.log('Event saved:', response.data)
+        } else {
+          info.revert()
+        }
       } catch (error) {
         console.error('Error updating event:', error.message)
-        info.revert()
+        if (info.event.id) {
+          info.revert()
+        }
       }
     },
 
@@ -496,6 +512,62 @@ export default {
       } catch (error) {
         console.error('Error deleting event:', error)
       }
+    },
+
+    handleEventCreationUpdate(newEvent, location, id = 0) {
+      // console.log(this.isSlotAvailable(newEvent, location, id))
+      if (!this.isSlotAvailable(newEvent, location, id)) {
+        this.$q.notify({
+          type: 'negative',
+          message:
+            'This room is already booked for the selected time slot. Please choose a different time.',
+        })
+        return false
+      }
+      return true
+    },
+
+    isSlotAvailable(newEvent, newLocation, newId) {
+      // Get the existing events from FullCalendar
+      let existingEvents = this.$refs.calendarRef.getApi().getEvents()
+
+      let roomEvents = existingEvents.filter(
+        (event) => event.extendedProps.location === newLocation && event.id !== newId,
+      )
+
+      // console.log('newEvent', roomEvents)
+      return !roomEvents.some((event) => {
+        // console.log(event.id)
+        // if (event.extendedProps.location !== newLocation) {
+        //   return false
+        // }
+        console.log(event.startStr, event.endStr)
+        // Convert event start & end times to Date objects for comparison
+        let existingStart = new Date(event.startStr)
+        let existingEnd = new Date(event.endStr)
+        let newStart = new Date(newEvent.start)
+        let newEnd = new Date(newEvent.end)
+        // console.log(existingStart, existingEnd, newStart, newEnd)
+        // Check if the date ranges overlap
+        let dateConflict =
+          (newStart >= existingStart && newStart <= existingEnd) || // New event starts inside an existing event
+          (newEnd >= existingStart && newEnd <= existingEnd) || // New event ends inside an existing event
+          (newStart <= existingStart && newEnd >= existingEnd) // New event fully overlaps an existing event
+
+        // Extract time components for more precise time checking
+        let existingStartTime = existingStart.getUTCHours() * 60 + existingStart.getUTCMinutes()
+        let existingEndTime = existingEnd.getUTCHours() * 60 + existingEnd.getUTCMinutes()
+        let newStartTime = newStart.getUTCHours() * 60 + newStart.getUTCMinutes()
+        let newEndTime = newEnd.getUTCHours() * 60 + newEnd.getUTCMinutes()
+        // console.log('Existing:', existingStartTime, existingEndTime)
+        // console.log('New:', newStartTime, newEndTime)
+        // Check if the time ranges overlap within the same day
+        // console.log(newStartTime, newEndTime)
+        // console.log(existingStartTime, existingEndTime)
+        let timeConflict = newStartTime < existingEndTime && newEndTime > existingStartTime // Overlapping time
+        // console.log(dateConflict, timeConflict)
+        return dateConflict && timeConflict // Return true if both date and time conflict
+      })
     },
 
     initExternalEvents() {

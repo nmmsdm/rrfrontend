@@ -5,6 +5,11 @@ export default ({ app }) => {
     return date.formatDate(value, format)
   }
 
+  app.config.globalProperties.$ManualformatDate = (value) => {
+    const dateObj = new Date(value)
+    return `${dateObj.getUTCFullYear()}-${String(dateObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dateObj.getUTCDate()).padStart(2, '0')}`
+  }
+
   app.config.globalProperties.$ManualformatTime = (value) => {
     const dateObj = new Date(value)
     let hours = dateObj.getUTCHours()
